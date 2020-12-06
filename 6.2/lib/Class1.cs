@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 public class Customs
 {
@@ -27,11 +28,10 @@ public class Customs
                     chars.Add(c, 1);
             }
 
-            foreach (var count in chars.Values)
-            {
-                if (count == clines)
-                    sum++;
-            }
+            var allanswered = from common in chars.Values
+                              where common == clines
+                              select 1;
+            sum += allanswered.Count();
         }
 
         return sum;
