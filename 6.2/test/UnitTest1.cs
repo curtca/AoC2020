@@ -11,15 +11,15 @@ namespace test
         public void Reports_AddTo2020_Product(string input, long expected)
         {
             Customs c = new Customs(input);
-            long sum = c.SumOfQsAnswered();
+            long sum = c.SumOfQsEveryoneAnswered();
             Assert.Equal(expected, sum);
         }
 
         public static IEnumerable<object[]> Data =>
             new List<object[]>
             {
-                new object[] { sample, 11 },
-                new object[] { input, 6703 },
+                new object[] { sample, 6 },
+                new object[] { input, 3430 },
             };
 
         static string sample =
