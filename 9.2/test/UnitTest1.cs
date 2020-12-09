@@ -11,15 +11,15 @@ namespace test
         public void Reports_AddTo2020_Product(string input, int preamble, long expected)
         {
             XMAS x = new XMAS(input);
-            long invalid = x.FindInvalid(preamble);
+            long invalid = x.FindWeakness(preamble);
             Assert.Equal(expected, invalid);
         }
 
         public static IEnumerable<object[]> Data =>
             new List<object[]>
             {
-                new object[] { sample1, 5, 127 },
-                new object[] { input, 25, 1639024365 },
+                new object[] { sample1, 5, 62 },
+                new object[] { input, 25, 219202240 },
             };
 
         static string sample1 =
