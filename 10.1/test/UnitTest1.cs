@@ -20,7 +20,7 @@ namespace test
             {
                 new object[] { sample1, 35 },
                 new object[] { sample2, 220 },
-                new object[] { input, 0 },
+                new object[] { input, 2450 },
             };
 
         static string sample1 =
