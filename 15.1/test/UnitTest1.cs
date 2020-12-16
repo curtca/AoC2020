@@ -25,7 +25,7 @@ namespace test
                 new object[] { sample5, 78 },
                 new object[] { sample6, 438 },
                 new object[] { sample7, 1836 },
-                new object[] { input, 0 },
+                new object[] { input, 273 },
             };
 
         static string sample1 = @"0,3,6";
