@@ -18,8 +18,8 @@ namespace test
         public static IEnumerable<object[]> Data =>
             new List<object[]>
             {
-                new object[] { sample1, 848 },
-                new object[] { input, 2228 },
+                new object[] { sample1, 112 },
+                new object[] { input, 359 },
             };
 
         static string sample1 =

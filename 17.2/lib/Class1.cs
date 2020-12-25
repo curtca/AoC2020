@@ -27,10 +27,10 @@ public class Conway
         int size = offset * 2 + inputsize; // square input only
 
         // Map input to 3d space
-        bool[,,,] space = new bool[size, size, size, size]; // gratuitous large in z & w, but whatever
+        bool[,,] space = new bool[size, size, size]; // gratuitous large in z, but whatever
         for (int x = 0; x < inputsize; x++)
             for (int y = 0; y < inputsize; y++)
-                space[x + offset, y + offset, offset, offset] = init[x, y] == '#';
+                space[x + offset, y + offset, offset] = init[x, y] == '#';
 
         for (int cycle = 0; cycle < cycles; cycle++)
             RunCycle(ref space);
@@ -39,34 +39,30 @@ public class Conway
         for (int x = 0; x < size; x++)
             for (int y = 0; y < size; y++)
                 for (int z = 0; z < size; z++)
-                    for (int w = 0; w < size; w++)
-                        if (space[x, y, z, w])
+                    if (space[x, y, z])
                         actives++;
 
         return actives;
     }
 
-    private void RunCycle(ref bool[,,,] space)
+    private void RunCycle(ref bool[,,] space)
     {
         int size = space.GetLength(0);
-        bool[,,,] nextspace = new bool[size, size, size, size];
+        bool[,,] nextspace = new bool[size, size, size];
         for (int x = 0; x < size; x++)
         {
             for (int y = 0; y < size; y++)
             {
                 for (int z = 0; z < size; z++)
                 {
-                    for (int w = 0; w < size; w++)
+                    int activeneighbors = ActiveNeighbors(space, x, y, z);
+                    if (space[x, y, z])
                     {
-                        int activeneighbors = ActiveNeighbors(space, x, y, z, w);
-                        if (space[x, y, z, w])
-                        {
-                            nextspace[x, y, z, w] = activeneighbors == 2 || activeneighbors == 3;
-                        }
-                        else
-                        {
-                            nextspace[x, y, z, w] = activeneighbors == 3;
-                        }
+                        nextspace[x, y, z] = activeneighbors == 2 || activeneighbors == 3;
+                    }
+                    else
+                    {
+                        nextspace[x, y, z] = activeneighbors == 3;
                     }
                 }
             }
@@ -74,18 +70,17 @@ public class Conway
         space = nextspace;
     }
 
-    private int ActiveNeighbors(bool[,,,] space, int x, int y, int z, int w)
+    private int ActiveNeighbors(bool[,,] space, int x, int y, int z)
     {
         int size = space.GetLength(0);
         int activeneighbors = 0;
         for (int dx = -1; dx <= 1; dx++)
             for (int dy = -1; dy <= 1; dy++)
                 for (int dz = -1; dz <= 1; dz++)
-                    for (int dw = -1; dw <= 1; dw++)
-                    {
-                        int x2 = x + dx, y2 = y + dy, z2 = z + dz, w2 = w + dw;
-                    if (x2 >= 0 && x2 < size && y2 >= 0 && y2 < size && z2 >= 0 && z2 < size && w2 >= 0 && w2 < size
-                        && !(x2 == x && y2 == y && z2 == z && w2 == w) && space[x2, y2, z2, w2])
+                {
+                    int x2 = x + dx, y2 = y + dy, z2 = z + dz;
+                    if (x2 >= 0 && x2 < size && y2 >= 0 && y2 < size && z2 >= 0 && z2 < size 
+                        && !(x2 == x && y2 == y && z2 == z) && space[x2, y2, z2])
                         activeneighbors++;
                 }
 
