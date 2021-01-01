@@ -8,8 +8,10 @@ using System.Collections;
 public class Tiles
 {
     List<Tile> tiles = new List<Tile>();
-    // map from edge signature (not tile id!) to list of tuples with that sig: Tile, face, rotation
+    // map from edge signature (not tile id!) to list of tuples with that sig: Tile, dir (clockwise=0, counter=1), rotation
     Dictionary<int, List<Tuple<Tile, int, int>>> tilesbyedge = new Dictionary<int, List<Tuple<Tile, int, int>>>();
+    Tile[,] positionedTiles = null;
+    char[,] patched = null;
 
     public Tiles(string input)
     {
@@ -34,30 +36,109 @@ public class Tiles
             }
         }
 
-        /*    
-            Hypothesis: At this point, there will be exactly 4 tiles (corners) with exactly 2 edges containing
+        /*  Hypothesis: At this point, there will be exactly 4 tiles (corners) with exactly 2 edges containing
             signatures that are not contained on any other tiles, and those two edges will be adjacent. There will 
             similarly be 40 tiles each with a single edge with a unique signature. These are the tiles on the 
             perimeter. The other 100 tiles will will not have ANY unique signatures. Rather, ALL have edges 
             will share a signature with one other tile. So once we choose (arbitrarily) one of the correct corner 
             tiles, everything falls into place. (In the full input of 12x12 tiles.)
 
-            Remember: Each edge has two signatures (keys) in tilesbyedge. One for each face.
-        */
+            Remember: Each edge has two signatures (keys) in tilesbyedge. One for each face. */
     }
 
     public long RoughWaters()
     {
         char[,] patched = Patch();
-        return -1;
+        string monster =
+@"                  # 
+#    ##    ##    ###
+ #  #  #  #  #  #   ";
+        OverlayWith0s(patched, monster);
+        Debug.Print("After monsters found...");
+        DumpPatch();
+        long c = CountHashes(patched);
+        return c;
+    }
+
+    private long CountHashes(char[,] patched)
+    {
+        long hashes = 0;
+        int size = patched.GetLength(0);
+        for (int x = 0; x < size; x++)
+        {
+            for (int y = 0; y < size; y++)
+                hashes += patched[x,y] == '#' ? 1 : 0;
+        }
+        return hashes;
+    }
+
+    private void OverlayWith0s(char[,] image, string monster)
+    {
+        // monster is multiline string with just # or space
+        var mgrid = monster.Split("\r\n").Select(line => line.ToCharArray()).ToArray();
+        int imagesize = image.GetLength(0);
+
+        for (int face = 0; face < 2; face++)
+        {
+            if (face == 1) // flip along diagonal
+            {
+                var mgridnew = new char[mgrid[0].Length][];
+                for (int y = 0; y < mgridnew.Length; y++) // y in target
+                {
+                    mgridnew[y] = new char[mgrid.Length];
+                    for (int x = 0; x < mgrid.Length; x++) // x in target
+                        mgridnew[y][x] = mgrid[x][y];
+                }
+                mgrid = mgridnew;
+            }
+
+            for (int rot = 0; rot < 4; rot++)
+            {
+                if (rot > 0) // rotate
+                {
+                    var mgridnew = new char[mgrid[0].Length][];
+                    for (int y = 0; y < mgridnew.Length; y++) // y in target
+                    {
+                        mgridnew[y] = new char[mgrid.Length];
+                        for (int x = 0; x < mgrid.Length; x++) // x in target
+                            mgridnew[y][x] = mgrid[mgrid.Length - x - 1][y];
+                    }
+                    mgrid = mgridnew;
+                }
+
+                int maxxoff = imagesize - mgrid[0].Length;
+                int maxyoff = imagesize - mgrid.Length;
+                for (int yoff = 0; yoff <= maxyoff; yoff++)
+                {
+                    for (int xoff = 0; xoff <= maxxoff; xoff++)
+                    {
+                        StampIfMatch(image, mgrid, xoff, yoff);
+                    }
+                }
+            }
+        }
+    }
+
+    private void StampIfMatch(char[,] image, char[][] mgrid, int xoff, int yoff)
+    {
+        int imagesize = image.GetLength(0);
+        for (int y = 0; y < mgrid.Length; y++)
+            for (int x = 0; x < mgrid[0].Length; x++)
+                if (mgrid[y][x] == '#' && image[xoff + x, yoff + y] == '.')
+                    return;
+
+        for (int y = 0; y < mgrid.Length; y++)
+            for (int x = 0; x < mgrid[0].Length; x++)
+                if (mgrid[y][x] == '#')
+                    image[xoff + x, yoff + y] = 'O';
     }
 
     public char[,] Patch()
     {
         int dimTiles = (int)Math.Sqrt(tiles.Count);
-        int dimSpaces = dimTiles * (Tile.size - 2) + 2;
-        Tile[,] positionedTiles = new Tile[dimTiles, dimTiles];
-        char[,] patched = new char[dimSpaces, dimSpaces];
+        int dimSpaces = dimTiles * (Tile.size - 2);
+        positionedTiles = new Tile[dimTiles, dimTiles];
+        patched = new char[dimSpaces, dimSpaces];
 
         // Count number of tiles which share each edge.
         var uniqueEdges = tilesbyedge.Select(pair => new { edgesig = pair.Key, Count = pair.Value.Count })
@@ -74,11 +155,11 @@ public class Tiles
 
         Tile startingCorner = corners.First(); // upper left of new patch
         // Need to orient it so that the two unique edges are top and left (0 and 3)
-        startingCorner.face = 1 - startingCorner.face; // flip it just for fun
+        // startingCorner.face = 1 - startingCorner.face; // HACK: We're not actually trying the flip when matching monster
         while (!(singles.Contains(startingCorner.PositionedSig(0))
               && singles.Contains(startingCorner.PositionedSig(3))))
             startingCorner.rotation++;
-        positionedTiles[0, 0] = startingCorner;
+        Paste(startingCorner, 0, 0);
 
         Debug.Print("Tile arrangement:");
         Debug.Write($"{startingCorner.id}/f{startingCorner.face}/r{startingCorner.rotation} ");
@@ -89,20 +170,44 @@ public class Tiles
             if (row > 0)
             {
                 Tile t = FindAndOrient(positionedTiles[0, row - 1], 2); // get the tile that fits on edge 1, and orient it accordingly
-                positionedTiles[0, row] = t;
+                Paste(t, 0, row);
                 Debug.Write($"{t.id}/f{t.face}/r{t.rotation} ");
             }
 
             for (int col = 1; col < dimTiles; col++)
             {
                 Tile t = FindAndOrient(positionedTiles[col - 1, row], 1); // get the tile that fits on edge 1, and orient it accordingly
-                positionedTiles[col, row] = t;
+                Paste(t, col, row);
                 Debug.Write($"{t.id}/f{t.face}/r{t.rotation} ");
             }
             Debug.Print("");
         }
 
         return patched;
+    }
+
+    public void DumpPatch()
+    {
+        int dimTiles = (int)Math.Sqrt(tiles.Count);
+        int dimSpaces = dimTiles * (Tile.size - 2);
+        Debug.Print("Full patch:");
+        for (int y = 0; y < dimSpaces; y++)
+        {
+            for (int x = 0; x < dimSpaces; x++)
+                Debug.Write(patched[x, y]);
+            Debug.Print("");
+        }
+    }
+
+    private void Paste(Tile t, int col, int row)
+    {
+        int size = Tile.size - 2;
+        positionedTiles[col, row] = t;
+        for (int y = 1; y <= size; y++)
+        {
+            for (int x = 1; x <= size; x++)
+                patched[col * size + x - 1, row * size + y - 1] = t.At(x, y);
+        }
     }
 
     private Tile FindAndOrient(Tile sourceTile, int sourceEdge)
@@ -194,19 +299,24 @@ public class Tile
         for (int row = 0; row < size; row++)
         {
             for (int col = 0; col < size; col++)
-            {
-                int x = col, y = row;
-                if (face == 1)
-                    (y, x) = (x, y);
-                for (int r = 0; r < rotation; r++)
-                    if (face == 0)
-                        (x, y) = (y, size - x - 1);
-                    else
-                        (x, y) = (size - y - 1, x);
-                sb.Append(lines[y][x]);
-            }
+                sb.Append(At(col, row));
             sb.AppendLine();
         }
         return sb.ToString();
     }
+
+    public char At(int x, int y)
+    {
+        if (face == 1)
+            (y, x) = (x, y);
+
+        for (int r = 0; r < rotation; r++)
+            if (face == 0)
+                (x, y) = (y, size - x - 1);
+            else
+                (x, y) = (size - y - 1, x);
+
+        return lines[y][x];
+    }
+
 }

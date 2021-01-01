@@ -19,7 +19,7 @@ namespace test
             new List<object[]>
             {
                 new object[] { sample1, 273 },
-                new object[] { input, 0 },
+                new object[] { input, 2006 },
             };
 
         static string sample1 =
